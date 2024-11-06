@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href='https://unpkg.com/boxicons@2.0.9/css/boxicons.min.css' rel='stylesheet'>
+    <link rel="stylesheet" href="css/category.css">    
+    <title>Categories</title>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<section id="sidebar">
+    <a href="#" class="brand"><img src="images/logo.png" width="70px" height="70px" alt="Logo"> TAGA-CUYO</a>
+    <ul class="side-menu">
+        <li><a href="dashboard.html"><i class='bx bxs-dashboard icon'></i> Staff Dashboard</a></li>
+        <li><a href="create_content.html"><i class='bx bxs-layer icon'></i> Create Content</a></li>
+        <li><a href="lesson.html"><i class='bx bxs-book icon'></i> Lessons</a></li>
+        <li><a href="category.html" class="active"><i class='bx bxs-component icon'></i> Categories</a></li>
+        <li><a href="status.html" class=""><i class='bx bxs-folder icon'></i>Status</a></li>
+        <li><a href="staff_login.html" id="logoutButton"><i class='bx bxs-log-out-circle'></i> Logout</a></li>
+    </ul>
+</section>
+
+<!-- CONTENT -->
+<section id="content">
+    <nav> 
+        <h2>List of Categories</h2>
+        <span class="divider"></span>
+        <div class="profile"></div>
+    </nav>
+
+    <main>
+        <div id="imageModal" class="modal">
+            <span class="close" id="closeModal">&times;</span>
+            <img class="modal-content" id="modalImage">
+            <button class="back-button" onclick="closeModal()">Back</button>
+        </div>
+        
+        
+        
+        <div id="loginMessage" style="display:none; text-align:center; padding:20px; background-color:#ffcccc;">
+            <h2>Please login to access the List of Contents.</h2>
+            <a href="staff_login.html">Go to Login Page</a>
+        </div>
+        
+        <div id="dashboardContent">
+            <label for="categorySelect">Select Category:</label>
+            <select id="categorySelect" onchange="loadSubcategories(this.value)">
+                <option class="disabled-option" value="" disabled selected>- Select a Category -</option>
+                <!-- Dynamically populated options here -->
+            </select>
+
+            <label for="subcategorySelect">Select SubCategory:</label>
+            <select id="subcategorySelect" onchange="fetchWords(this.value)" disabled>
+                <option class="disabled-option" value="" disabled selected>- Select a SubCategory -</option>
+                <!-- Dynamically populated options here -->
+            </select>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>No.</th>
+                        <th>Word</th>
+                        <th>Translated</th>
+                        <th>Options</th>
+                        <th>Image</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="wordsTableBody">
+                    <!-- Table rows will be populated here -->
+                </tbody>
+            </table>
+        </div>
+    </main>
+    
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.0/firebase-app.js';
+        import { getFirestore, collection, getDocs, doc, deleteDoc, updateDoc, addDoc, getDoc, serverTimestamp  } from 'https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js';
+        import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-auth.js"; 
+        
+        const firebaseConfig = {
+            apiKey: "AIzaSyA_VoT0W3zD6u5GVEa24dLcMkt3DJtnqYg",
+            authDomain: "tagalog-cuyonon-mobile-app.firebaseapp.com",
+            projectId: "tagalog-cuyonon-mobile-app",
+            storageBucket: "tagalog-cuyonon-mobile-app.appspot.com",
+            messagingSenderId: "598478516019",
+            appId: "1:598478516019:web:e680422657a9ebde305846",
+            measurementId: "G-9R8PRFSXQ1"
+        };
+        
+        const app = initializeApp(firebaseConfig);
+        const firestore = getFirestore(app);
+        const auth = getAuth(app);
+        
+        let isLoggingOut = false;
+        let currentUserEmail; 
+
+
+        // Logout functionality
+        document.getElementById('logoutButton').addEventListener('click', async (event) => {
+            event.preventDefault();
+            isLoggingOut = true;
+            try {
+                await signOut(auth);
+                alert('You have been logged out successfully.');
+                window.location.href = "staff_login.html";
+            } catch (error) {
+                console.error('Error logging out:', error);
+                alert('Error logging out. Please try again.');
+            }
+        });
+        
+        // Auth check and loading categories
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                document.getElementById('loginMessage').style.display = 'none';
+                document.getElementById('dashboardContent').style.display = 'block';
+                currentUserEmail = user.email; // Store user email
+
+                await loadCategories();
+            } else {
+                window.location.href = "staff_login.html";
+            }
+        });
+        
+        window.loadCategories = async function () {
+            const categorySelect = document.getElementById('categorySelect');
+            const categoriesRef = collection(firestore, 'categories');
+            const snapshot = await getDocs(categoriesRef);
+    
+            if (!snapshot.empty) {
+                snapshot.forEach(doc => {
+                    const option = document.createElement("option");
+                    option.value = doc.id;
+                    option.text = doc.data().category_name;
+                    categorySelect.appendChild(option);
+                });
+            }
+        };
+        
+        window.loadSubcategories = async function (categoryId) {
+            const subcategorySelect = document.getElementById('subcategorySelect');
+            subcategorySelect.innerHTML = '<option value="" disabled selected>- Select a SubCategory -</option>';
+            subcategorySelect.disabled = !categoryId;
+    
+            if (categoryId) {
+                const subcategoriesRef = collection(firestore, 'categories', categoryId, 'subcategories');
+                const snapshot = await getDocs(subcategoriesRef);
+    
+                if (!snapshot.empty) {
+                    snapshot.forEach(doc => {
+                        const option = document.createElement("option");
+                        option.value = doc.id;
+                        option.text = doc.data().subcategory_name;
+                        subcategorySelect.appendChild(option);
+                    });
+                }
+            }
+        };
+        
+        // Fetch words and populate table
+        window.fetchWords = async function (subcategoryId) {
+            const wordsTableBody = document.getElementById('wordsTableBody');
+            wordsTableBody.innerHTML = '';
+    
+            if (subcategoryId) {
+                const categoryId = document.getElementById('categorySelect').value;
+                const wordsRef = collection(firestore, 'categories', categoryId, 'subcategories', subcategoryId, 'words');
+                const snapshot = await getDocs(wordsRef);
+    
+                let rowNumber = 1;
+                snapshot.forEach(doc => {
+                    const wordData = doc.data();
+                    const row = document.createElement('tr');
+    
+                    row.innerHTML = `
+                        <td>${rowNumber++}</td>
+                        <td contenteditable="false">${wordData.word || 'N/A'}</td>
+                        <td contenteditable="false">${wordData.translated || 'N/A'}</td>
+                        <td>
+                            <ul>
+                                ${wordData.options ? wordData.options.map(option => `<li contenteditable="true" class="option">${option}</li>`).join('') : '<li>N/A</li>'}
+                            </ul>
+                        </td>
+                        <td>
+                            <img src="${wordData.image_path || 'images/placeholder.png'}" 
+                                 alt="${wordData.word || 'Image'}" width="50" height="50" 
+                                 onclick="openImageModal('${wordData.image_path || ''}')" style="cursor: pointer;" />
+                        </td>
+                        <td class="action">
+                            <a href="#" class="edit" data-id="${doc.id}" title="Edit"><i class='bx bxs-pencil'></i></a> |
+                            <a href="#" class="delete" data-id="${doc.id}" title="Delete"><i class='bx bxs-trash'></i></a>
+                        </td>
+                    `;
+    
+                    wordsTableBody.appendChild(row);
+                });
+            }
+        };
+        
+        // Edit word entry
+// ... (your existing code)
+
+// ... (your existing code)
+
+async function handleEdit(event) {
+    const editLink = event.target.closest('.edit');
+    const row = editLink.closest('tr');
+    const wordCell = row.querySelector('td:nth-child(2)');
+    const translatedCell = row.querySelector('td:nth-child(3)');
+    const optionsCells = Array.from(row.querySelectorAll('.option'));
+    const wordId = editLink.dataset.id;
+    const categoryId = document.getElementById('categorySelect').value;
+    const subcategoryId = document.getElementById('subcategorySelect').value;
+    const isCategoryPage = window.location.pathname.includes("category.html");
+
+    if (!categoryId || !subcategoryId || !wordId) {
+        alert("Missing identifiers. Please ensure all fields are selected.");
+        return;
+    }
+
+    // Enable editing mode or save changes
+    if (wordCell.contentEditable === "true") {
+        // Save changes to pending state
+        const updatedWord = wordCell.innerText.trim();
+        const updatedTranslation = translatedCell.innerText.trim();
+        const updatedOptions = optionsCells.map(opt => opt.innerText.trim());
+
+        if (!updatedWord || !updatedTranslation || updatedOptions.some(opt => !opt)) {
+            alert("Please fill in all fields.");
+            return;
+        }
+
+        // Add the edit to the activities collection with isApproved set to false
+        const activityRef = collection(firestore, 'activities');
+        await addDoc(activityRef, {
+            action: 'Edited word in Category',
+            addedBy: currentUserEmail,
+            timestamp: serverTimestamp(),
+            location: 'category', // Adjust based on context
+            categoryId,
+            subcategoryId,
+            oldWord: wordCell.dataset.originalWord,
+            newWord: updatedWord,
+            options: updatedOptions,
+            translated: updatedTranslation,
+            isApprove: false, // Pending approval
+            wordId,
+        });
+
+        alert('Word update is pending approval!');
+        fetchWords(subcategoryId); // Refresh the table
+    } else {
+        // Enable editing
+        wordCell.contentEditable = "true";
+        translatedCell.contentEditable = "true";
+        optionsCells.forEach(opt => opt.contentEditable = "true");
+        editLink.innerHTML = `<i class='bx bxs-check-circle'></i>`;
+        // Store original values for comparison
+        wordCell.dataset.originalWord = wordCell.innerText; // Store the original word for later comparison
+    }
+}
+
+
+async function handleDelete(event) {
+    const deleteLink = event.target.closest('.delete');
+    const wordId = deleteLink.dataset.id;
+    const categoryId = document.getElementById('categorySelect').value;
+    const subcategoryId = document.getElementById('subcategorySelect').value;
+    const isCategoryPage = window.location.pathname.includes("category.html");
+
+    if (confirm("Are you sure you want to delete this word? This action will require admin approval.")) {
+        try {
+            // Get word data for logging
+            const wordDoc = await getDoc(doc(firestore, 'categories', categoryId, 'subcategories', subcategoryId, 'words', wordId));
+            const wordData = wordDoc.data(); 
+
+            // Log the deletion request to 'activities' collection with isApproved: false (pending approval)
+            await addDoc(collection(firestore, 'activities'), {
+                action: 'Delete word from Category',
+                word: wordData.word,
+                categoryId: categoryId,
+                subcategoryId: subcategoryId,
+                addedBy: currentUserEmail,
+                timestamp: serverTimestamp(),
+                isApproved: false,  // Pending approval
+                type: isCategoryPage ? 'category' : 'lesson',  // Adjust based on the context
+                exactLocation: `categories/${categoryId}/subcategories/${subcategoryId}/words/${wordId}`,
+            });
+
+            alert('Deletion request has been submitted for admin approval.');
+            fetchWords(subcategoryId);  // Refresh the words list
+        } catch (error) {
+            console.error('Error logging deletion request:', error);
+            alert('Error submitting deletion request. Please try again.');
+        }
+    }
+}
+
+
+async function logActivity(actionType, addedBy, details) {
+    const activityRef = collection(firestore, 'activities');
+
+    // Prepare the base activity object
+    const activityData = {
+        action: actionType,
+        addedBy: addedBy,
+        timestamp: serverTimestamp(), // Ensure serverTimestamp is imported from Firebase
+        location: details.type,
+    };
+
+    // Add specific fields based on action type
+    if (actionType.includes('Edited')) {
+        // Log activity details for edits
+       
+        activityData.oldWord = details.oldWord || null;
+        activityData.newWord = details.newWord || null;
+        activityData.exactLocation = `categories/${details.categoryId}/subcategories/${details.subcategoryId}/words/${details.newWord || details.oldWord}`;
+        activityData.options = details.options || null;
+        activityData.translated = details.translated || null;
+    } else if (actionType.includes('Deleted')) {
+        // Log activity details for deletions
+        activityData.word = details.word; // Log the word that was deleted
+        activityData.exactLocation = `categories/${details.categoryId}/subcategories/${details.subcategoryId}/words/${details.word}`;
+    }
+
+    // Add the document to Firestore
+    await addDoc(activityRef, activityData);
+}
+
+
+
+
+
+// ... (the rest of your existing code)
+
+
+// ... (the rest of your existing code)
+
+
+        
+window.openImageModal = function (imagePath) {
+    const modal = document.getElementById("imageModal");
+    const modalImg = document.getElementById("modalImage");
+    
+    if (imagePath) {
+        modalImg.src = imagePath;
+        modal.style.display = "flex"; // Use flex for centering
+    }
+};
+        // Modal for images
+        function openImageModal(src) {
+            const modal = document.getElementById("imageModal");
+            const modalImg = document.getElementById("modalImage");
+            modal.style.display = "block";
+            modalImg.src = src || 'images/placeholder.png';
+        }
+        
+        function closeModal() {
+            document.getElementById("imageModal").style.display = "none";
+        }
+        document.getElementById("closeModal").addEventListener("click", closeModal);
+
+        // Attach the function to the window object
+window.closeModal = function() {
+    document.getElementById("imageModal").style.display = "none";
+};
+
+// This should now work because closeModal is globally accessible
+document.getElementById("closeModal").addEventListener("click", closeModal);
+
+        // Event delegation for edit and delete actions
+        document.getElementById('wordsTableBody').addEventListener('click', function(event) {
+            if (event.target.closest('.edit')) {
+                handleEdit(event);
+            } else if (event.target.closest('.delete')) {
+                handleDelete(event);
+            }
+        });
+    </script>
+    
+     <style>
+    /* Modal background overlay */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 10;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.8);
+    justify-content: center; /* Center horizontally */
+    align-items: center;     /* Center vertically */
+}
+
+/* Modal content - image */
+.modal-content {
+    max-width: 90vw; /* Fit within viewport width */
+    max-height: 80vh; /* Fit within viewport height */
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Close button style */
+.close {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    color: #fff;
+    font-size: 25px;
+    font-weight: bold;
+    cursor: pointer;
+    background-color: rgba(0, 0, 0, 0.6);
+    padding: 5px;
+    border-radius: 50%;
+    z-index: 11;
+}
+
+.close:hover {
+    background-color: rgba(255, 0, 0, 0.8);
+    color: #fff;
+}
+.back-button {
+    margin-top: 10px; /* Space from the image */
+    padding: 10px 15px;
+    font-size: 16px;
+    color: #fff;
+    background-color: #007bff; /* Bootstrap primary color */
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.back-button:hover {
+    background-color: #0056b3; /* Darker shade on hover */
+}
+
+
+    </style>
+</body>
+</html>

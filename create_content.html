@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Content</title>
+    <link href='https://unpkg.com/boxicons@2.0.9/css/boxicons.min.css' rel='stylesheet'>
+    <link rel="stylesheet" href="https://cdn.materialdesignicons.com/5.4.55/css/materialdesignicons.min.css">
+    <link rel="stylesheet" href="https://unicons.iconscout.com/release/v4.0.0/css/line.css">
+    <link rel="stylesheet" href="css/create_content.css.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"></link>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="module">
+        // Import Firebase SDKs
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-app.js";
+        import { getFirestore, collection, addDoc, getDocs, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js";
+        import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-auth.js"; 
+        import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-storage.js";
+        
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyA_VoT0W3zD6u5GVEa24dLcMkt3DJtnqYg",
+            authDomain: "tagalog-cuyonon-mobile-app.firebaseapp.com",
+            databaseURL: "https://tagalog-cuyonon-mobile-app-default-rtdb.firebaseio.com",
+            projectId: "tagalog-cuyonon-mobile-app",
+            storageBucket: "tagalog-cuyonon-mobile-app.appspot.com",
+            messagingSenderId: "598478516019",
+            appId: "1:598478516019:web:e680422657a9ebde305846",
+            measurementId: "G-9R8PRFSXQ1"
+        };
+    
+     
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+    const storage = getStorage(app);
+
+    let currentUser = null;
+    let isLoggingOut = false;
+
+    // Sign out functionality
+    document.getElementById('logoutButton').addEventListener('click', async (event) => {
+        event.preventDefault();
+        isLoggingOut = true; // Set the flag when logging out
+        try {
+            await signOut(auth);
+            alert('You have been logged out successfully.');
+            window.location.href = "staff_login.html"; // Redirect to the login page after logout
+        } catch (error) {
+            console.error('Error logging out:', error);
+            alert('Error logging out. Please try again.');
+        }
+    });
+
+    // Monitor authentication state
+    onAuthStateChanged(auth, (user) => {
+        if (isLoggingOut) return; // Prevent handling state change if logging out
+
+        if (user) {
+            currentUser = user;
+            console.log("User is signed in:", user);
+        } else {
+            console.log("No user is signed in.");
+            alert("Please log in to continue.");
+            window.location.href = "staff_login.html"; // Redirect to login page if not signed in
+        }
+    });
+
+  // Sign out functionality
+  document.getElementById('logoutButton').addEventListener('click', async (event) => {
+            event.preventDefault();
+            isLoggingOut = true;
+            try {
+                await signOut(auth);
+                alert('You have been logged out successfully.');
+                window.location.href = "staff_login.html";
+            } catch (error) {
+                console.error('Error logging out:', error);
+                alert('Error logging out. Please try again.');
+            }
+        });
+
+        // Monitor authentication state
+        onAuthStateChanged(auth, (user) => {
+            if (isLoggingOut) return;
+            if (user) {
+                currentUser = user;
+            } else {
+                alert("Please log in to continue.");
+                window.location.href = "staff_login.html";
+            }
+        });
+
+        function toggleForm() {
+        const selectedValue = document.getElementById("form-select").value;
+        document.getElementById("category-form").style.display = selectedValue === "category" ? "block" : "none";
+        document.getElementById("lesson-form").style.display = selectedValue === "lesson" ? "block" : "none";
+    }
+
+    // Add event listener to load subcategories based on selected category
+    document.getElementById('category-select').addEventListener('change', loadSubcategories);
+
+    // Load lessons and categories on page load
+    loadLessons();
+    loadCategories();
+
+    // Function to load categories
+    async function loadCategories() {
+        try {
+            const categoriesRef = collection(db, 'categories');
+            const categorySnapshot = await getDocs(categoriesRef);
+            const categoryList = document.getElementById('category-select');
+            categoryList.innerHTML = '<option value="">-- Select a Category --</option>';
+            
+            categorySnapshot.forEach(doc => {
+                const category = doc.data();
+                const option = document.createElement('option');
+                option.value = doc.id;
+                option.textContent = category.category_name || doc.id;
+                categoryList.appendChild(option);
+            });
+        } catch (error) {
+            console.error("Error loading categories:", error);
+        }
+    }
+
+    // Function to load lessons
+    async function loadLessons() {
+        try {
+            const lessonsRef = collection(db, 'lessons');
+            const lessonSnapshot = await getDocs(lessonsRef);
+            const lessonList = document.getElementById('lesson-select');
+            lessonList.innerHTML = '<option value="">-- Select a Lesson --</option>';
+            
+            lessonSnapshot.forEach(doc => {
+                const lesson = doc.data();
+                const option = document.createElement('option');
+                option.value = doc.id;
+                option.textContent = lesson.lesson_name || doc.id;
+                lessonList.appendChild(option);
+            });
+        } catch (error) {
+            console.error("Error loading lessons:", error);
+        }
+    }
+
+    // Function to load subcategories
+    async function loadSubcategories() {
+        const categoryId = document.getElementById('category-select').value;
+        const subcategoryRef = collection(db, 'categories', categoryId, 'subcategories');
+        const subcategorySnapshot = await getDocs(subcategoryRef);
+        const subcategoryList = document.getElementById('subcategory-select');
+        subcategoryList.innerHTML = '<option value="">-- Select a Subcategory --</option>';
+
+        subcategorySnapshot.forEach(doc => {
+            const subcategory = doc.data();
+            const option = document.createElement('option');
+            option.value = doc.id;
+            option.textContent = subcategory.subcategory_name;
+            subcategoryList.appendChild(option);
+        });
+    }
+
+    // Add word to category (approval process for category)
+    window.addWordToCategory = async function() {
+        const categoryId = document.getElementById('category-select').value;
+        const subcategoryId = document.getElementById('subcategory-select').value;
+        const word = document.getElementById('word-category').value.trim();
+        const translated = document.getElementById('translated-category').value.trim();
+        const options = Array.from(document.querySelectorAll('.option-input'))
+            .map(input => input.value.trim())
+            .filter(option => option !== "");
+
+        const file = document.getElementById('category-image').files[0];
+
+        // Validate input fields and file
+        if (!categoryId || !subcategoryId || !word || !translated || options.length < 2 || !file) {
+            alert('Please fill out all fields and ensure there are at least two options and an image.');
+            return;
+        }
+
+        try {
+            // Upload the image file to Firebase Storage
+            const storageRef = ref(storage, `category_images/${categoryId}/${subcategoryId}/${file.name}`);
+            const uploadTask = uploadBytesResumable(storageRef, file);
+
+            uploadTask.on('state_changed', null, 
+                (error) => {
+                    console.error("Image upload failed:", error);
+                    alert('Error uploading image. Please try again.');
+                }, 
+                async () => {
+                    const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+
+                    // Add the content to 'activities' collection with isApprove: false (for admin approval)
+                    await addDoc(collection(db, 'activities'), {
+                        word, translated, options,
+                        image_path: downloadURL,
+                        addedBy: currentUser.email,
+                        location: 'category',
+                        action: 'Added word in Category',
+                        categoryId, subcategoryId,
+                        isApprove: false,
+                        timestamp: new Date()
+                    });
+
+                    alert('Word added for admin approval.');
+                    document.getElementById('word-category-form').reset();
+                    document.getElementById('options-container-category').innerHTML = '';
+                }
+            );
+        } catch (error) {
+            console.error("Error adding word to category: ", error);
+            alert('Error adding word. Please try again.');
+        }
+    };
+
+    // Add word to lesson (approval process for lesson)
+    window.addWordToLesson = async function() {
+        const lessonId = document.getElementById('lesson-select').value;
+        const word = document.getElementById('word-lesson').value.trim();
+        const translated = document.getElementById('translated-lesson').value.trim();
+        const options = Array.from(document.getElementsByClassName('option-field'))
+            .map(input => input.value.trim())
+            .filter(value => value);
+
+        if (options.length < 2 || !word || !translated) {
+            alert("Please complete all fields and add at least two options.");
+            return;
+        }
+
+        try {
+            const lessonName = await getLessonName(lessonId);
+
+            // Add the content to 'activities' collection with isApprove: false (for admin approval)
+            await addDoc(collection(db, 'activities'), {
+                word, translated, options,
+                addedBy: currentUser.email,
+                location: 'lesson',
+                action: 'Added word in Lesson',
+                lessonId, lessonName,
+                isApprove: false,
+                timestamp: new Date()
+            });
+
+            alert('Word added for admin approval.');
+            document.getElementById('word-lesson-form').reset();
+            document.getElementById('options-container-lesson').innerHTML = '';
+        } catch (error) {
+            console.error("Error adding word to lesson: ", error);
+            alert('Error adding word. Please try again.');
+        }
+    };
+
+    // Get lesson name from Firestore
+    async function getLessonName(lessonId) {
+        try {
+            const docRef = doc(db, 'lessons', lessonId);
+            const docSnap = await getDoc(docRef);
+            if (docSnap.exists()) {
+                return docSnap.data().lesson_name;
+            }
+            throw new Error('Lesson not found');
+        } catch (error) {
+            console.error("Error fetching lesson name:", error);
+        }
+    }
+
+// Add option field to lesson
+window.addOptionToLesson = function() {
+    const optionsContainer = document.getElementById('options-container-lesson');
+    const optionWrapper = document.createElement('div');
+    optionWrapper.className = 'option-wrapper';
+
+    const newOption = document.createElement('input');
+    newOption.type = 'text';
+    newOption.className = 'option-field';
+    newOption.placeholder = 'Enter option';
+
+    const removeIcon = document.createElement('i');
+    removeIcon.className = 'fas fa-trash';
+    removeIcon.style.cursor = 'pointer';
+    removeIcon.onclick = () => optionsContainer.removeChild(optionWrapper);
+
+    optionWrapper.append(newOption, removeIcon);
+    optionsContainer.appendChild(optionWrapper);
+};
+
+// Add option field to category
+window.addOptionToCategory = function() {
+    const optionsContainer = document.getElementById('options-container-category');
+    const optionWrapper = document.createElement('div');
+    optionWrapper.className = 'option-wrapper';
+
+    const newOption = document.createElement('input');
+    newOption.type = 'text';
+    newOption.className = 'option-input';
+    newOption.placeholder = 'Enter option';
+
+    const removeIcon = document.createElement('i');
+    removeIcon.className = 'fas fa-trash';
+    removeIcon.style.cursor = 'pointer';
+    removeIcon.onclick = () => optionsContainer.removeChild(optionWrapper);
+
+    optionWrapper.append(newOption, removeIcon);
+    optionsContainer.appendChild(optionWrapper);
+};
+
+
+        </script>
+    
+</head>
+<body>
+    <!-- SIDEBAR -->
+    <section id="sidebar">
+        <a href="dashboard.html" class="brand"><img src="images/logo.png" width="70px" height="70px"> TAGA-CUYO</a>
+        <ul class="side-menu">
+            <li><a href="dashboard.html" class=""><i class='bx bxs-dashboard icon'></i> Staff Dashboard</a></li>
+            <li><a href="create_content.html" class="active"><i class='bx bxs-layer icon'></i> Create Content</a></li>
+            <li><a href="lesson.html" class=""><i class='bx bxs-book icon'></i>Lessons</a></li>
+            <li><a href="category.html" class=""><i class='bx bxs-component icon'></i>Categories</a></li>
+            <li><a href="status.html" class=""><i class='bx bxs-folder icon'></i> Status</a></li>
+            <li><a href="staff_login.html" id="logoutButton"><i class='bx bxs-log-out-circle'></i> Logout</a></li>
+        </ul>
+    </section>
+    <section id="content">
+        <main>
+           
+            <div id="myModal" class="modal">
+                <div class="modal-content">
+                    
+                    <h3 class="text-xl font-bold mb-4">Select Content</h3>
+                    <select id="form-select" onchange="toggleForm()" class="w-full border border-gray-300 rounded p-2 mb-4">
+                        <option value="">-- Select Content --</option>
+                        <option value="category">Category</option>
+                        <option value="lesson">Lesson</option>
+                    </select>
+                    <!-- Category Form -->
+                    <div id="category-form" style="display: block;">
+                        <h3 class="text-xl font-bold mb-4">Add Words to Category</h3>
+                        <form id="word-category-form" onsubmit="event.preventDefault(); addWordToCategory();">
+                            <div class="mb-4">
+                                <label for="category-select" class="block text-gray-700 mb-2">Select Category:</label>
+                                <select id="category-select" name="category" onchange="loadSubcategories()" class="w-full border border-gray-300 rounded p-2">
+                                    <option value="">-- Select a Category --</option>
+                                    <!-- Categories will be loaded here -->
+                                </select>
+                            </div>
+        
+                            <div class="mb-4">
+                                <label for="subcategory-select" class="block text-gray-700 mb-2">Select Subcategory:</label>
+                                <select id="subcategory-select" name="subcategory" class="w-full border border-gray-300 rounded p-2">
+                                    <option value="">-- Select a Subcategory --</option>
+                                    <!-- Subcategories will be loaded here -->
+                                </select>
+                            </div>
+        
+                            <div class="mb-4">
+                                <label for="word-category" class="block text-gray-700 mb-2">Word:</label>
+                                <input type="text" id="word-category" name="word" required placeholder="Enter word" class="w-full border border-gray-300 rounded p-2" />
+                            </div>
+        
+                            <div class="mb-4">
+                                <label for="translated-category" class="block text-gray-700 mb-2">Translated:</label>
+                                <input type="text" id="translated-category" name="translated" required placeholder="Enter translated word" class="w-full border border-gray-300 rounded p-2" />
+                            </div>
+        
+                            <div class="mb-4">
+                                <label for="category-image" class="block text-gray-700 mb-2">Image:</label>
+                                <input type="file" id="category-image" name="image" accept="image/*" required class="border border-gray-300 rounded p-2" />
+                            </div>
+        
+                            <div id="options-container-category" class="mb-4">
+                                <label class="block text-gray-700 mb-2">Options:</label>
+                                <input type="text" class="option-input w-full border border-gray-300 rounded p-2 mb-2" id="option-1" name="options" placeholder="Enter option" required />
+                            </div>
+                            <button type="button" onclick="addOptionToCategory()" class="bg-green-500 text-white px-4 py-2 rounded mb-4">Add Option</button>
+                            
+                            <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded">Submit</button>
+                        </form>
+                    </div>
+        
+                    <!-- Add Word to Lesson Form -->
+<div id="lesson-form" style="display: none;">
+    <h3 class="text-xl font-bold mb-4">Add Word to Lesson</h3>
+    <form id="word-lesson-form">
+        <div class="mb-4">
+            <label for="lesson-select" class="block text-gray-700 mb-2">Select Lesson:</label>
+            <select id="lesson-select" class="w-full border border-gray-300 rounded p-2">
+                <option value="">-- Select a Lesson --</option>
+                <!-- Populate this with lesson options -->
+            </select>
+        </div>
+        <div class="mb-4">
+            <label for="word-lesson" class="block text-gray-700 mb-2">Word:</label>
+            <input type="text" id="word-lesson" placeholder="Enter word" required class="w-full border border-gray-300 rounded p-2" />
+        </div>
+        <div class="mb-4">
+            <label for="translated-lesson" class="block text-gray-700 mb-2">Translated:</label>
+            <input type="text" id="translated-lesson" placeholder="Enter translation" required class="w-full border border-gray-300 rounded p-2" />
+        </div>
+        <div class="mb-4">
+            <label class="block text-gray-700 mb-2">Options:</label>
+            <div id="options-container-lesson"></div>
+            <button type="button" onclick="addOptionToLesson()" class="bg-green-500 text-white px-4 py-2 rounded">Add Option</button>
+        </div>
+        <button type="button" onclick="addWordToLesson()" class="bg-blue-500 text-white px-4 py-2 rounded">Add Word</button>
+    </form>
+</div>
+
+<script>
+    // Define the toggleForm function at the start of your script
+    function toggleForm() {
+        const selectedValue = document.getElementById("form-select").value;
+        document.getElementById("category-form").style.display = selectedValue === "category" ? "block" : "none";
+        document.getElementById("lesson-form").style.display = selectedValue === "lesson" ? "block" : "none";
+    }
+
+    // Add event listener to the dropdown that triggers toggleForm
+    document.getElementById('form-select').addEventListener('change', toggleForm);
+
+    // The rest of your functions below...
+    async function loadLessons() {
+        try {
+            const lessonsRef = collection(db, 'lessons');
+            const lessonSnapshot = await getDocs(lessonsRef);
+            const lessonList = document.getElementById('lesson-select');
+            lessonList.innerHTML = '<option value="">-- Select a Lesson --</option>';
+            
+            lessonSnapshot.forEach(doc => {
+                const lesson = doc.data();
+                const option = document.createElement('option');
+                option.value = doc.id;
+                option.textContent = lesson.lesson_name || doc.id;
+                lessonList.appendChild(option);
+            });
+        } catch (error) {
+            console.error("Error loading lessons:", error);
+        }
+    }
+    
+    // Call your load functions when the page loads
+    window.onload = function() {
+        loadLessons();
+        loadCategories();
+    };
+
+    // Other functions for adding words, categories, etc.
+</script>
+
+</body>
+</html>

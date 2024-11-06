@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href='https://unpkg.com/boxicons@2.0.9/css/boxicons.min.css' rel='stylesheet'>
+    <link rel="stylesheet" href="https://cdn.materialdesignicons.com/5.4.55/css/materialdesignicons.min.css">
+    <link rel="stylesheet" href="https://unicons.iconscout.com/release/v4.0.0/css/line.css">
+    <link rel="stylesheet" href="css/status.css">
+    <title>Status</title>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<section id="sidebar">
+    <a href="#" class="brand"><img src="images/logo.png" width="70px" height="70px"> TAGA-CUYO</a>
+    <ul class="side-menu">
+        <li><a href="dashboard.html"><i class='bx bxs-dashboard icon'></i> Staff Dashboard</a></li>
+        <li><a href="create_content.html"><i class='bx bxs-layer icon'></i> Create Content</a></li>
+        <li><a href="lesson.html"><i class='bx bxs-book icon'></i> Lessons</a></li>
+        <li><a href="category.html"><i class='bx bxs-component icon'></i> Categories</a></li>
+        <li><a href="status.html" class="active"><i class='bx bxs-folder icon'></i> Status</a></li>
+        <li><a href="staff_login.html" id="logoutButton"><i class='bx bxs-log-out-circle'></i> Logout</a></li>
+    </ul>
+</section>
+<!-- SIDEBAR -->
+
+<!-- NAVBAR -->
+<section id="content">
+    <nav>
+        <div class="profile"></div>
+    </nav>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Action</th>
+                <th>Date & Time Made</th>
+                <th>Status</th>
+                <th>Processed By</th>
+                <th>Word</th>
+                <th>Translated Word</th>
+      
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Content will be dynamically populated here -->
+        </tbody>
+    </table>
+</section>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-app.js";
+    import { getFirestore, collection, getDocs, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyA_VoT0W3zD6u5GVEa24dLcMkt3DJtnqYg",
+        authDomain: "tagalog-cuyonon-mobile-app.firebaseapp.com",
+        projectId: "tagalog-cuyonon-mobile-app",
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+// Load pending content on page load
+async function loadPendingContent() {
+    const activitiesSnapshot = await getDocs(collection(db, 'activities'));
+    const tableBody = document.querySelector('tbody');
+    tableBody.innerHTML = '';  // Clear the table before repopulating it
+
+    activitiesSnapshot.forEach((docSnapshot) => {
+        const data = docSnapshot.data();
+        const row = document.createElement('tr');
+        const rowId = docSnapshot.id;  // Save the doc ID for later use
+
+        // Debugging: Log data to check its structure
+        console.log(data);
+
+        // Check if content belongs to lesson or category, and dynamically display the appropriate details
+        const isLesson = data.type === 'lesson';
+        const lessonOrCategoryName = isLesson ? data.lessonName : data.categoryName;
+        const subcategoryName = isLesson ? '-' : data.subcategoryName;
+
+        // Handle the fields based on the action type
+        let wordDisplay = '';
+        let translatedDisplay = '';
+
+        // Adjust logic based on the action type
+        if (data.action === 'added') {
+            // For "add" actions, display the new word and translation
+            wordDisplay = data.word ? data.word : 'Word added (no word provided)';
+            translatedDisplay = data.translated ? data.translated : 'No translation provided';
+        } else if (data.action === 'edited') {
+            // For "edit" actions, display the old and new words
+            wordDisplay = data.oldWord ? data.oldWord : 'No old word';  // If it's an edit, show the old word
+            translatedDisplay = data.newWord ? data.newWord : 'No new word';  // If it's an edit, show the new word
+        } else if (data.action === 'deleted') {
+            // For "delete" actions, show the deleted word and its translation
+            wordDisplay = `Deleted word: ${data.word || 'No word to display'}`;
+            translatedDisplay = `Deleted translation: ${data.translated || 'No translation available'}`;
+        } else {
+            // For other actions, just display the word and translation
+            wordDisplay = data.word || 'No word provided';
+            translatedDisplay = data.translated || 'No translation provided';
+        }
+
+        // Add condition for displaying approve button based on approval status
+        const approveButton = !data.isApprove 
+            ? `<button class="approve-btn" onclick="approveContent('${rowId}', this)">Approve</button>` 
+            : '<span>Accepted</span>'; // Show Accepted if approved
+
+        // Render the table row with the dynamically handled data
+        row.innerHTML = `
+            <td>${data.action}</td>
+            <td>${data.timestamp.toDate().toLocaleString()}</td>
+            <td class="status-pending">${data.isApprove ? 'Approved' : 'Pending...'}</td>
+            <td>${data.addedBy}</td>
+            <td>${wordDisplay}</td> <!-- Dynamically display word or old word -->
+            <td>${translatedDisplay}</td> <!-- Dynamically display translated word or new word -->
+        `;
+
+        tableBody.appendChild(row);
+    });
+}
+
+// Approve content and update Firestore
+async function approveContent(docId, approveButton) {
+    try {
+        const docRef = doc(db, 'activities', docId);
+        // Update the document to set isApprove to true
+        await updateDoc(docRef, {
+            isApprove: true
+        });
+
+        // Dynamically update the status in the table
+        const statusCell = approveButton.closest('tr').querySelector('.status-pending');
+        const approveCell = approveButton.closest('tr').querySelector('td:last-child'); // Approve button cell
+        statusCell.textContent = 'Approved';
+        approveCell.innerHTML = '<span>Accepted</span>';  // Update button to show "Accepted"
+
+        // Optionally, remove the approve button if it is no longer needed
+        approveButton.remove();
+
+    } catch (error) {
+        console.error("Error approving content:", error);
+        alert("Failed to approve content.");
+    }
+}
+
+document.addEventListener("DOMContentLoaded", loadPendingContent);  // Load content when the page is ready
+
+</script>
+
+
+
+</body>
+</html>
