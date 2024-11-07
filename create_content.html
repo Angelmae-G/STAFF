@@ -127,24 +127,26 @@
     }
 
     // Function to load lessons
-    async function loadLessons() {
-        try {
-            const lessonsRef = collection(db, 'lessons');
-            const lessonSnapshot = await getDocs(lessonsRef);
-            const lessonList = document.getElementById('lesson-select');
-            lessonList.innerHTML = '<option value="">-- Select a Lesson --</option>';
-            
-            lessonSnapshot.forEach(doc => {
-                const lesson = doc.data();
-                const option = document.createElement('option');
-                option.value = doc.id;
-                option.textContent = lesson.lesson_name || doc.id;
-                lessonList.appendChild(option);
-            });
-        } catch (error) {
-            console.error("Error loading lessons:", error);
-        }
+    // Function to load lessons
+async function loadLessons() {
+    try {
+        const lessonsRef = collection(db, 'lessons');
+        const lessonSnapshot = await getDocs(lessonsRef);
+        const lessonList = document.getElementById('lesson-select');
+        lessonList.innerHTML = '<option value="">-- Select a Lesson --</option>';
+        
+        lessonSnapshot.forEach((doc) => {
+            const lesson = doc.data();
+            const option = document.createElement('option');
+            option.value = doc.id;
+            option.textContent = `Aralin ${lesson.lesson_id}`; // Prefix with "Aralin" and add lesson_id
+            lessonList.appendChild(option);
+        });
+    } catch (error) {
+        console.error("Error loading lessons:", error);
     }
+}
+
 
     // Function to load subcategories
     async function loadSubcategories() {
@@ -422,24 +424,37 @@ window.addOptionToCategory = function() {
     document.getElementById('form-select').addEventListener('change', toggleForm);
 
     // The rest of your functions below...
-    async function loadLessons() {
-        try {
-            const lessonsRef = collection(db, 'lessons');
-            const lessonSnapshot = await getDocs(lessonsRef);
-            const lessonList = document.getElementById('lesson-select');
-            lessonList.innerHTML = '<option value="">-- Select a Lesson --</option>';
+ // Function to load lessons
+// Function to load lessons
+async function loadLessons() {
+    try {
+        const lessonsRef = collection(db, 'lessons');
+        const lessonSnapshot = await getDocs(lessonsRef);
+        const lessonList = document.getElementById('lesson-select');
+        lessonList.innerHTML = '<option value="">-- Select a Lesson --</option>';
+        
+        lessonSnapshot.forEach((doc) => {
+            const lesson = doc.data();
+            console.log("Lesson data:", lesson); // Debugging: log the lesson data to check contents
+
+            const option = document.createElement('option');
+            option.value = doc.id;
+
+            // Check if lesson_id exists and use it; otherwise, display an error message
+            option.textContent = lesson.lesson_id
+                ? `Aralin ${lesson.lesson_id}`
+                : 'Lesson ID not found';
             
-            lessonSnapshot.forEach(doc => {
-                const lesson = doc.data();
-                const option = document.createElement('option');
-                option.value = doc.id;
-                option.textContent = lesson.lesson_name || doc.id;
-                lessonList.appendChild(option);
-            });
-        } catch (error) {
-            console.error("Error loading lessons:", error);
-        }
+            lessonList.appendChild(option);
+        });
+    } catch (error) {
+        console.error("Error loading lessons:", error);
     }
+}
+
+
+
+
     
     // Call your load functions when the page loads
     window.onload = function() {
