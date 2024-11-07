@@ -84,23 +84,22 @@ async function loadPendingContent() {
         let wordDisplay = '';
         let translatedDisplay = '';
 
-        // Adjust logic based on the action type
         if (data.action === 'added') {
             // For "add" actions, display the new word and translation
-            wordDisplay = data.word ? data.word : 'Word added (no word provided)';
-            translatedDisplay = data.translated ? data.translated : 'No translation provided';
+            wordDisplay = data.word || 'No word provided';
+            translatedDisplay = data.translated || 'No translation provided';
         } else if (data.action === 'edited') {
-            // For "edit" actions, display the old and new words
-            wordDisplay = data.oldWord ? data.oldWord : 'No old word';  // If it's an edit, show the old word
-            translatedDisplay = data.newWord ? data.newWord : 'No new word';  // If it's an edit, show the new word
+            // For "edit" actions, display both old and new words and translations if available
+            wordDisplay = `Old: ${data.oldWord || 'No old word'}, New: ${data.newWord || 'No new word'}`;
+            translatedDisplay = `Old: ${data.oldTranslated || 'No old translation'}, New: ${data.newTranslated || 'No new translation'}`;
         } else if (data.action === 'deleted') {
-            // For "delete" actions, show the deleted word and its translation
+            // For "delete" actions, show the deleted word and translation
             wordDisplay = `Deleted word: ${data.word || 'No word to display'}`;
             translatedDisplay = `Deleted translation: ${data.translated || 'No translation available'}`;
         } else {
-            // For other actions, just display the word and translation
+            // For other actions, display word and translation if available
             wordDisplay = data.word || 'No word provided';
-            translatedDisplay = data.translated || 'No translation provided';
+            translatedDisplay = data.translated || 'No translation available';
         }
 
         // Add condition for displaying approve button based on approval status
@@ -116,11 +115,13 @@ async function loadPendingContent() {
             <td>${data.addedBy}</td>
             <td>${wordDisplay}</td> <!-- Dynamically display word or old word -->
             <td>${translatedDisplay}</td> <!-- Dynamically display translated word or new word -->
+            
         `;
 
         tableBody.appendChild(row);
     });
 }
+
 
 // Approve content and update Firestore
 async function approveContent(docId, approveButton) {

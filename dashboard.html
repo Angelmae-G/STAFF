@@ -259,7 +259,7 @@
                 } else if (activity.action.includes('Edited')) {
                     activityDetails += `
                         <p><strong>Old Word:</strong> ${activity.oldWord || "N/A"}</p>
-                        <p><strong>New Word:</strong> ${activity.newWord || "N/A"}</p>
+                        <p><strong>New Word:</strong> ${activity.word || "N/A"}</p>
                         <p><strong>Options:</strong> ${activity.options ? activity.options.join(", ") : "N/A"}</p>
                         <p><strong>Location:</strong> ${activity.location || "N/A"}</p>
                         <p><strong>Exact Location:</strong> ${activity.exactLocation || "N/A"}</p>

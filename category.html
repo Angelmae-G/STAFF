@@ -224,16 +224,16 @@ async function handleEdit(event) {
     // Enable editing mode or save changes
     if (wordCell.contentEditable === "true") {
         // Save changes to pending state
-        const updatedWord = wordCell.innerText.trim();
-        const updatedTranslation = translatedCell.innerText.trim();
-        const updatedOptions = optionsCells.map(opt => opt.innerText.trim());
+        const updatedWord = wordCell.innerText.trim();  // Updated word from editable cell
+        const updatedTranslation = translatedCell.innerText.trim();  // Updated translation from editable cell
+        const updatedOptions = optionsCells.map(opt => opt.innerText.trim());  // Updated options
 
         if (!updatedWord || !updatedTranslation || updatedOptions.some(opt => !opt)) {
             alert("Please fill in all fields.");
             return;
         }
 
-        // Add the edit to the activities collection with isApproved set to false
+        // Add the edit to the activities collection with isApproved set to false (pending approval)
         const activityRef = collection(firestore, 'activities');
         await addDoc(activityRef, {
             action: 'Edited word in Category',
@@ -242,18 +242,18 @@ async function handleEdit(event) {
             location: 'category', // Adjust based on context
             categoryId,
             subcategoryId,
-            oldWord: wordCell.dataset.originalWord,
-            newWord: updatedWord,
+            oldWord: wordCell.dataset.originalWord,  // Store the original word for reference
+            word: updatedWord,  // Use updated word here
             options: updatedOptions,
             translated: updatedTranslation,
             isApprove: false, // Pending approval
-            wordId,
+            exactLocation: `categories/${categoryId}/subcategories/${subcategoryId}/words/${wordId}`,  // Corrected this part
         });
 
         alert('Word update is pending approval!');
         fetchWords(subcategoryId); // Refresh the table
     } else {
-        // Enable editing
+        // Enable editing mode
         wordCell.contentEditable = "true";
         translatedCell.contentEditable = "true";
         optionsCells.forEach(opt => opt.contentEditable = "true");
@@ -262,6 +262,7 @@ async function handleEdit(event) {
         wordCell.dataset.originalWord = wordCell.innerText; // Store the original word for later comparison
     }
 }
+
 
 
 async function handleDelete(event) {
@@ -277,6 +278,9 @@ async function handleDelete(event) {
             const wordDoc = await getDoc(doc(firestore, 'categories', categoryId, 'subcategories', subcategoryId, 'words', wordId));
             const wordData = wordDoc.data(); 
 
+            // Retrieve the translated word (assuming it's in the wordData object)
+            const translated = wordData.translated;  // Assuming the word data contains a 'translated' field
+
             // Log the deletion request to 'activities' collection with isApproved: false (pending approval)
             await addDoc(collection(firestore, 'activities'), {
                 action: 'Delete word from Category',
@@ -285,7 +289,9 @@ async function handleDelete(event) {
                 subcategoryId: subcategoryId,
                 addedBy: currentUserEmail,
                 timestamp: serverTimestamp(),
-                isApproved: false,  // Pending approval
+                location: 'category',
+                translated: translated,  // Use the correct translated value
+                isApprove: false,  // Pending approval
                 type: isCategoryPage ? 'category' : 'lesson',  // Adjust based on the context
                 exactLocation: `categories/${categoryId}/subcategories/${subcategoryId}/words/${wordId}`,
             });
@@ -298,6 +304,7 @@ async function handleDelete(event) {
         }
     }
 }
+
 
 
 async function logActivity(actionType, addedBy, details) {
