@@ -280,16 +280,21 @@ async function handleDelete(event) {
 
             // Retrieve the translated word (assuming it's in the wordData object)
             const translated = wordData.translated;  // Assuming the word data contains a 'translated' field
+            const word = wordData.word;  // Assuming the word is also in wordData
+            const options = wordData.options || [];  // Assuming options is an array
+            const imagePath = wordData.image_path || '';  // Assuming the image path is in wordData
 
             // Log the deletion request to 'activities' collection with isApproved: false (pending approval)
             await addDoc(collection(firestore, 'activities'), {
                 action: 'Delete word from Category',
-                word: wordData.word,
+                word: word,  // Ensure 'word' is included
                 categoryId: categoryId,
                 subcategoryId: subcategoryId,
                 addedBy: currentUserEmail,
                 timestamp: serverTimestamp(),
                 location: 'category',
+                image_path: imagePath,  // Include the image path if available
+                options: options,  // Use the options array here
                 translated: translated,  // Use the correct translated value
                 isApprove: false,  // Pending approval
                 type: isCategoryPage ? 'category' : 'lesson',  // Adjust based on the context
@@ -304,6 +309,7 @@ async function handleDelete(event) {
         }
     }
 }
+
 
 
 
