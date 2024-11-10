@@ -20,7 +20,7 @@
         <li><a href="lesson.html"><i class='bx bxs-book icon'></i> Lessons</a></li>
         <li><a href="category.html"><i class='bx bxs-component icon'></i> Categories</a></li>
         <li><a href="status.html" class="active"><i class='bx bxs-folder icon'></i> Status</a></li>
-        <li><a href="staff_login.html" id="logoutButton"><i class='bx bxs-log-out-circle'></i> Logout</a></li>
+        <li><a href="#" id="logoutButton"><i class='bx bxs-log-out-circle'></i> Logout</a></li>
     </ul>
 </section>
 <!-- SIDEBAR -->
@@ -40,7 +40,6 @@
                 <th>Processed By</th>
                 <th>Word</th>
                 <th>Translated Word</th>
-      
             </tr>
         </thead>
         <tbody>
@@ -51,107 +50,102 @@
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-auth.js";
     import { getFirestore, collection, getDocs, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyA_VoT0W3zD6u5GVEa24dLcMkt3DJtnqYg",
-        authDomain: "tagalog-cuyonon-mobile-app.firebaseapp.com",
-        projectId: "tagalog-cuyonon-mobile-app",
+            authDomain: "tagalog-cuyonon-mobile-app.firebaseapp.com",
+            projectId: "tagalog-cuyonon-mobile-app",
     };
 
     const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
     const db = getFirestore(app);
-// Load pending content on page load
-async function loadPendingContent() {
-    const activitiesSnapshot = await getDocs(collection(db, 'activities'));
-    const tableBody = document.querySelector('tbody');
-    tableBody.innerHTML = '';  // Clear the table before repopulating it
+    let isLoggingOut = false;
 
-    activitiesSnapshot.forEach((docSnapshot) => {
-        const data = docSnapshot.data();
-        const row = document.createElement('tr');
-        const rowId = docSnapshot.id;  // Save the doc ID for later use
+    // Monitor authentication state
+    onAuthStateChanged(auth, (user) => {
+        if (isLoggingOut) return; // Prevent handling state change if logging out
 
-        // Debugging: Log data to check its structure
-        console.log(data);
-
-        // Check if content belongs to lesson or category, and dynamically display the appropriate details
-        const isLesson = data.type === 'lesson';
-        const lessonOrCategoryName = isLesson ? data.lessonName : data.categoryName;
-        const subcategoryName = isLesson ? '-' : data.subcategoryName;
-
-        // Handle the fields based on the action type
-        let wordDisplay = '';
-        let translatedDisplay = '';
-
-        if (data.action === 'added') {
-            // For "add" actions, display the new word and translation
-            wordDisplay = data.word || 'No word provided';
-            translatedDisplay = data.translated || 'No translation provided';
-        } else if (data.action === 'edited') {
-            // For "edit" actions, display both old and new words and translations if available
-            wordDisplay = `Old: ${data.oldWord || 'No old word'}, New: ${data.newWord || 'No new word'}`;
-            translatedDisplay = `Old: ${data.oldTranslated || 'No old translation'}, New: ${data.newTranslated || 'No new translation'}`;
-        } else if (data.action === 'deleted') {
-            // For "delete" actions, show the deleted word and translation
-            wordDisplay = `Deleted word: ${data.word || 'No word to display'}`;
-            translatedDisplay = `Deleted translation: ${data.translated || 'No translation available'}`;
+        if (user) {
+            console.log("User is signed in:", user.email);
         } else {
-            // For other actions, display word and translation if available
-            wordDisplay = data.word || 'No word provided';
-            translatedDisplay = data.translated || 'No translation available';
+            console.log("No user is signed in.");
+            alert("Please log in to continue.");
+            window.location.href = "staff_login.html"; // Redirect to login page if not signed in
         }
-
-        // Add condition for displaying approve button based on approval status
-        const approveButton = !data.isApprove 
-            ? `<button class="approve-btn" onclick="approveContent('${rowId}', this)">Approve</button>` 
-            : '<span>Accepted</span>'; // Show Accepted if approved
-
-        // Render the table row with the dynamically handled data
-        row.innerHTML = `
-            <td>${data.action}</td>
-            <td>${data.timestamp.toDate().toLocaleString()}</td>
-            <td class="status-pending">${data.isApprove ? 'Approved' : 'Pending...'}</td>
-            <td>${data.addedBy}</td>
-            <td>${wordDisplay}</td> <!-- Dynamically display word or old word -->
-            <td>${translatedDisplay}</td> <!-- Dynamically display translated word or new word -->
-            
-        `;
-
-        tableBody.appendChild(row);
     });
-}
 
+    // Load pending content on page load
+    async function loadPendingContent() {
+        const activitiesSnapshot = await getDocs(collection(db, 'activities'));
+        const tableBody = document.querySelector('tbody');
+        tableBody.innerHTML = '';  // Clear the table before repopulating it
 
-// Approve content and update Firestore
-async function approveContent(docId, approveButton) {
-    try {
-        const docRef = doc(db, 'activities', docId);
-        // Update the document to set isApprove to true
-        await updateDoc(docRef, {
-            isApprove: true
+        activitiesSnapshot.forEach((docSnapshot) => {
+            const data = docSnapshot.data();
+            const row = document.createElement('tr');
+            const rowId = docSnapshot.id;  // Save the doc ID for later use
+
+            console.log(data);
+
+            // Determine action content
+            const isLesson = data.type === 'lesson';
+            const wordDisplay = data.word || 'No word provided';
+            const translatedDisplay = data.translated || 'No translation available';
+
+            const approveButton = !data.isApprove 
+                ? `<button class="approve-btn" onclick="approveContent('${rowId}', this)">Approve</button>` 
+                : '<span>Accepted</span>'; 
+
+            row.innerHTML = `
+                <td>${data.action}</td>
+                <td>${data.timestamp?.toDate().toLocaleString() || 'No timestamp'}</td>
+                <td class="status-pending">${data.isApprove ? 'Approved' : 'Pending...'}</td>
+                <td>${data.addedBy}</td>
+                <td>${wordDisplay}</td>
+                <td>${translatedDisplay}</td>
+            `;
+
+            tableBody.appendChild(row);
         });
-
-        // Dynamically update the status in the table
-        const statusCell = approveButton.closest('tr').querySelector('.status-pending');
-        const approveCell = approveButton.closest('tr').querySelector('td:last-child'); // Approve button cell
-        statusCell.textContent = 'Approved';
-        approveCell.innerHTML = '<span>Accepted</span>';  // Update button to show "Accepted"
-
-        // Optionally, remove the approve button if it is no longer needed
-        approveButton.remove();
-
-    } catch (error) {
-        console.error("Error approving content:", error);
-        alert("Failed to approve content.");
     }
-}
 
-document.addEventListener("DOMContentLoaded", loadPendingContent);  // Load content when the page is ready
+    // Approve content
+    async function approveContent(docId, approveButton) {
+        try {
+            const docRef = doc(db, 'activities', docId);
+            await updateDoc(docRef, { isApprove: true });
 
+            const statusCell = approveButton.closest('tr').querySelector('.status-pending');
+            const approveCell = approveButton.closest('tr').querySelector('td:last-child'); 
+            statusCell.textContent = 'Approved';
+            approveCell.innerHTML = '<span>Accepted</span>';
+
+            approveButton.remove();
+        } catch (error) {
+            console.error("Error approving content:", error);
+            alert("Failed to approve content.");
+        }
+    }
+
+    document.addEventListener("DOMContentLoaded", loadPendingContent);
+
+    // Logout functionality
+    document.getElementById('logoutButton').addEventListener('click', async (event) => {
+        event.preventDefault();
+        isLoggingOut = true;
+        try {
+            await signOut(auth);
+            alert('You have been logged out successfully.');
+            window.location.href = "staff_login.html";
+        } catch (error) {
+            console.error('Error logging out:', error);
+            alert('Error logging out. Please try again.');
+        }
+    });
 </script>
-
-
 
 </body>
 </html>

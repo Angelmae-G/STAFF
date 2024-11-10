@@ -204,7 +204,6 @@
 // ... (your existing code)
 
 // ... (your existing code)
-
 async function handleEdit(event) {
     const editLink = event.target.closest('.edit');
     const row = editLink.closest('tr');
@@ -221,47 +220,62 @@ async function handleEdit(event) {
         return;
     }
 
-    // Enable editing mode or save changes
     if (wordCell.contentEditable === "true") {
-        // Save changes to pending state
-        const updatedWord = wordCell.innerText.trim();  // Updated word from editable cell
-        const updatedTranslation = translatedCell.innerText.trim();  // Updated translation from editable cell
-        const updatedOptions = optionsCells.map(opt => opt.innerText.trim());  // Updated options
+        // Collect updated data
+        const updatedWord = wordCell.innerText.trim();
+        const updatedTranslation = translatedCell.innerText.trim();
+        const updatedOptions = optionsCells.map(opt => opt.innerText.trim());
 
         if (!updatedWord || !updatedTranslation || updatedOptions.some(opt => !opt)) {
             alert("Please fill in all fields.");
             return;
         }
 
-        // Add the edit to the activities collection with isApproved set to false (pending approval)
-        const activityRef = collection(firestore, 'activities');
-        await addDoc(activityRef, {
-            action: 'Edited word in Category',
-            addedBy: currentUserEmail,
-            timestamp: serverTimestamp(),
-            location: 'category', // Adjust based on context
-            categoryId,
-            subcategoryId,
-            oldWord: wordCell.dataset.originalWord,  // Store the original word for reference
-            word: updatedWord,  // Use updated word here
-            options: updatedOptions,
-            translated: updatedTranslation,
-            isApprove: false, // Pending approval
-            exactLocation: `categories/${categoryId}/subcategories/${subcategoryId}/words/${wordId}`,  // Corrected this part
-        });
+        try {
+            // Update word details in Firestore
+            const wordRef = doc(firestore, 'categories', categoryId, 'subcategories', subcategoryId, 'words', wordId);
+            await updateDoc(wordRef, {
+                word: updatedWord,
+                translated: updatedTranslation,
+                options: updatedOptions
+            });
 
-        alert('Word update is pending approval!');
-        fetchWords(subcategoryId); // Refresh the table
+            // Log the edit to the activities collection
+            const activityRef = collection(firestore, 'activities');
+            await addDoc(activityRef, {
+                action: 'Edited word in Category',
+                addedBy: currentUserEmail,
+                timestamp: serverTimestamp(),
+                location: isCategoryPage ? 'category' : 'lesson',
+                categoryId,
+                subcategoryId,
+                oldWord: wordCell.dataset.originalWord,
+                word: updatedWord,
+                options: updatedOptions,
+                translated: updatedTranslation,
+                isApprove: true,
+                exactLocation: `categories/${categoryId}/subcategories/${subcategoryId}/words/${wordId}`
+            });
+
+            alert('Word updated successfully!');
+            fetchWords(subcategoryId); // Refresh the table to show current data
+
+        } catch (error) {
+            console.error("Error updating word:", error);
+            alert("Failed to update word. Please try again.");
+        }
+
     } else {
         // Enable editing mode
         wordCell.contentEditable = "true";
         translatedCell.contentEditable = "true";
         optionsCells.forEach(opt => opt.contentEditable = "true");
         editLink.innerHTML = `<i class='bx bxs-check-circle'></i>`;
-        // Store original values for comparison
-        wordCell.dataset.originalWord = wordCell.innerText; // Store the original word for later comparison
+        wordCell.dataset.originalWord = wordCell.innerText;
     }
 }
+
+
 
 
 

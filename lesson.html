@@ -165,70 +165,80 @@
         };
     
         async function handleEdit(event) {
-            const row = event.target.closest('tr');
-            const wordCell = row.querySelector('td:nth-child(2)');
-            const translatedCell = row.querySelector('td:nth-child(3)');
-            const optionCells = row.querySelectorAll('ul li');
-            const editIcon = event.target.closest('.edit')?.querySelector('i');
-    
-            if (!editIcon) {
-                console.error("Edit icon not found.");
-                return;
-            }
-    
-            const isEditing = wordCell.contentEditable === 'true';
-            const docId = event.target.closest('.edit').getAttribute('data-id');
-            const lessonId = document.getElementById('lessonSelect').value;
-    
-            if (isEditing) {
-                const updatedWord = wordCell.innerText.trim();
-                const updatedTranslation = translatedCell.innerText.trim();
-                const updatedOptions = Array.from(optionCells).map(option => option.innerText.trim());
-    
-                try {
-                    const lessonDoc = await getDoc(doc(firestore, 'lessons', lessonId));
-                    const lessonName = lessonDoc.exists() ? lessonDoc.data().name : 'Unknown Lesson';
-                    
-                    // Log the edit to activities collection with isApproved set to false
-                    await logActivity('Edited word in Lesson', currentUserEmail, lessonId, lessonName, wordCell.dataset.originalWord, updatedWord, updatedOptions, updatedTranslation, 'lessons', false);
-                    
-                    // Alert user
-                    alert('Your edit is pending approval.');
-    
-                } catch (error) {
-                    console.error('Error logging activity:', error);
-                    alert('Error logging edit. Please try again.');
-                }
-            } else {
-                wordCell.contentEditable = 'true';
-                translatedCell.contentEditable = 'true';
-                optionCells.forEach(option => option.contentEditable = 'true');
-                editIcon.classList.replace('bxs-pencil', 'bxs-check-circle');
-            }
-    
-            wordCell.contentEditable = !isEditing;
-            translatedCell.contentEditable = !isEditing;
-            optionCells.forEach(option => option.contentEditable = !isEditing);
-            editIcon.classList.toggle('bxs-pencil', isEditing);
-            editIcon.classList.toggle('bxs-check-circle', !isEditing);
-        }
-    
-        async function logActivity(action, addedBy, lessonId, lessonName, oldWord, word, options, translated, type, isApprove) {
-            const activityRef = doc(collection(firestore, 'activities')); // Use auto-generated IDs
-            await setDoc(activityRef, {
-                action: action,
-                addedBy: addedBy,
-                lessonId: lessonId,
-                oldWord: oldWord || null,
-                word: word || null,
-                exactLocation: `${type}/${lessonId}/words/${word || oldWord}`, // Adjusted to be type-specific
-                location: type, // Use 'lesson' or 'category'
-                options: options || null,
-                translated: translated || null,
-                timestamp: serverTimestamp(),
-                isApprove: isApprove || false  // New field for approval
+    const row = event.target.closest('tr');
+    const wordCell = row.querySelector('td:nth-child(2)');
+    const translatedCell = row.querySelector('td:nth-child(3)');
+    const optionCells = row.querySelectorAll('ul li');
+    const editIcon = event.target.closest('.edit')?.querySelector('i');
+
+    if (!editIcon) {
+        console.error("Edit icon not found.");
+        return; 
+    }
+
+    const isEditing = wordCell.contentEditable === 'true';
+    const docId = event.target.closest('.edit').getAttribute('data-id');
+    const lessonId = document.getElementById('lessonSelect').value;
+
+    if (isEditing) {
+        const updatedWord = wordCell.innerText.trim();
+        const updatedTranslation = translatedCell.innerText.trim();
+        const updatedOptions = Array.from(optionCells).map(option => option.innerText.trim());
+
+        console.log({ updatedWord, updatedTranslation, updatedOptions });
+
+        try {
+            const lessonDoc = await getDoc(doc(firestore, 'lessons', lessonId));
+            const lessonName = lessonDoc.exists() ? lessonDoc.data().name : 'Unknown Lesson';
+            
+            // Log the edit to activities collection with isApprove set to true
+            await logActivity('Edited word in Lesson', currentUserEmail, lessonId, lessonName, wordCell.dataset.originalWord, updatedWord, updatedOptions, updatedTranslation, 'lessons', true);
+            
+            // Update Firestore with the new word, translation, and options
+            await updateDoc(doc(firestore, 'lessons', lessonId, 'words', docId), {
+                word: updatedWord,
+                translated: updatedTranslation,
+                options: updatedOptions
             });
+
+            // Alert user that the word was successfully edited
+            alert('Word edited successfully.');
+        } catch (error) {
+            console.error('Error updating document:', error);
+            alert('Error updating word. Please try again.');
         }
+    } else {
+        wordCell.contentEditable = 'true';
+        translatedCell.contentEditable = 'true';
+        optionCells.forEach(option => option.contentEditable = 'true');
+        editIcon.classList.replace('bxs-pencil', 'bxs-check-circle'); 
+    }
+
+    wordCell.contentEditable = !isEditing;
+    translatedCell.contentEditable = !isEditing;
+    optionCells.forEach(option => option.contentEditable = !isEditing);
+    editIcon.classList.toggle('bxs-pencil', isEditing);
+    editIcon.classList.toggle('bxs-check-circle', !isEditing);
+}
+
+async function logActivity(action, addedBy, lessonId, lessonName, oldWord, word, options, translated, type, isApprove = true) {
+    const activityRef = doc(collection(firestore, 'activities')); // Use auto-generated IDs
+    await setDoc(activityRef, {
+        action: action,
+        addedBy: addedBy,
+        lessonId: lessonId,
+        oldWord: oldWord || null,
+        word: word || null,
+        exactLocation: `${type}/${lessonId}/words/${word || oldWord}`, // Adjusted to be type-specific
+        location: type, // Use 'lesson' or 'category'
+        options: options || null,
+        translated: translated || null,
+        timestamp: serverTimestamp(),
+        isApprove: isApprove  // Set isApprove to true by default
+    });
+}
+
+
     
         async function handleDelete(event) {
     const row = event.target.closest('tr');
