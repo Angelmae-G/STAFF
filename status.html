@@ -77,60 +77,142 @@
         }
     });
 
-    // Load pending content on page load
-    async function loadPendingContent() {
-        const activitiesSnapshot = await getDocs(collection(db, 'activities'));
-        const tableBody = document.querySelector('tbody');
-        tableBody.innerHTML = '';  // Clear the table before repopulating it
+  // Load history records from the 'history' collection
+async function loadHistory() {
+    const historySnapshot = await getDocs(collection(db, 'history'));
+    const historyTableBody = document.querySelector('#historyTable tbody'); // Assuming a table with ID 'historyTable'
 
-        activitiesSnapshot.forEach((docSnapshot) => {
-            const data = docSnapshot.data();
-            const row = document.createElement('tr');
-            const rowId = docSnapshot.id;  // Save the doc ID for later use
+    historySnapshot.forEach((docSnapshot) => {
+        const data = docSnapshot.data();
+        const row = document.createElement('tr');
 
-            console.log(data);
+        row.innerHTML = `
+            <td>${data.action}</td>
+            <td>${data.contentType || 'Unknown'}</td>
+            <td>${data.dismissedReason || 'No reason provided'}</td>
+            <td>${data.user}</td>
+            <td>${data.timestamp?.toDate().toLocaleString() || 'No timestamp'}</td>
+        `;
 
-            // Determine action content
-            const isLesson = data.type === 'lesson';
-            const wordDisplay = data.word || 'No word provided';
-            const translatedDisplay = data.translated || 'No translation available';
+        historyTableBody.appendChild(row);
+    });
+}
 
-            const approveButton = !data.isApprove 
-                ? `<button class="approve-btn" onclick="approveContent('${rowId}', this)">Approve</button>` 
-                : '<span>Accepted</span>'; 
+document.addEventListener("DOMContentLoaded", loadHistory);
 
-            row.innerHTML = `
-                <td>${data.action}</td>
-                <td>${data.timestamp?.toDate().toLocaleString() || 'No timestamp'}</td>
-                <td class="status-pending">${data.isApprove ? 'Approved' : 'Pending...'}</td>
-                <td>${data.addedBy}</td>
-                <td>${wordDisplay}</td>
-                <td>${translatedDisplay}</td>
-            `;
 
-            tableBody.appendChild(row);
-        });
-    }
 
-    // Approve content
-    async function approveContent(docId, approveButton) {
-        try {
-            const docRef = doc(db, 'activities', docId);
+ // Load pending and dismissed content on page load
+ async function loadPendingContent() {
+    const activitiesSnapshot = await getDocs(collection(db, 'activities'));
+    const tableBody = document.querySelector('tbody');
+    tableBody.innerHTML = '';  // Clear the table before repopulating it
+
+    const activities = [];
+    activitiesSnapshot.forEach((docSnapshot) => {
+        const data = docSnapshot.data();
+        activities.push({ ...data, id: docSnapshot.id });
+    });
+
+    // Sort activities by timestamp (latest first)
+    activities.sort((a, b) => b.timestamp?.toDate() - a.timestamp?.toDate());
+
+    activities.forEach((activity) => {
+        const row = document.createElement('tr');
+        const rowId = activity.id;  // Save the doc ID for later use
+
+        console.log(activity);
+
+        // Determine action content
+        const wordDisplay = activity.word || 'No word provided';
+        const translatedDisplay = activity.translated || 'No translation available';
+
+        // Check approval and dismissal status
+        let statusDisplay;
+        let statusClass; // Use this variable to assign a CSS class
+
+        if (activity.dismissed) {
+            statusDisplay = 'Dismissed';
+            statusClass = 'status-dismissed'; // Red
+        } else if (activity.isApprove) {
+            statusDisplay = 'Approved';
+            statusClass = 'status-approved'; // Green
+        } else {
+            statusDisplay = 'Pending...';
+            statusClass = 'status-pending'; // Yellow
+        }
+
+        row.innerHTML = `
+            <td>${activity.action}</td>
+            <td>${activity.timestamp?.toDate().toLocaleString() || 'No timestamp'}</td>
+            <td class="${statusClass}">${statusDisplay}</td>
+            <td>${activity.addedBy}</td>
+            <td>${wordDisplay}</td>
+            <td>${translatedDisplay}</td>
+        `;
+
+        tableBody.appendChild(row);
+    });
+}
+
+
+// Approve or delete content based on admin action
+async function approveContent(docId, approveButton, action) {
+    try {
+        const docRef = doc(db, 'activities', docId);
+
+        if (action === 'delete') {
+            // Mark the deletion as approved and update the Firestore document
+            await updateDoc(docRef, { isApprove: true, dismissed: true });
+
+            const row = approveButton.closest('tr');
+
+            // Ensure that the row has the necessary columns
+            const statusCell = row.querySelector('td:nth-child(3)'); // Status column
+            const wordCell = row.querySelector('td:nth-child(5)'); // Word column
+            const translatedCell = row.querySelector('td:nth-child(6)'); // Translated Word column
+
+            if (statusCell && wordCell && translatedCell) {
+                // Change status and the word content to indicate deletion
+                statusCell.textContent = 'Approved (Deleted)';
+                statusCell.classList.replace('status-pending', 'status-approved'); // Update status to approved
+                wordCell.innerHTML = '<span>Deleted</span>';  // Mark word as deleted
+                translatedCell.innerHTML = '<span>Deleted</span>'; // Mark translated word as deleted
+            }
+
+            alert("Content marked as deleted and approved.");
+        } else {
+            // If it's not a delete action, just approve the content
             await updateDoc(docRef, { isApprove: true });
 
             const statusCell = approveButton.closest('tr').querySelector('.status-pending');
-            const approveCell = approveButton.closest('tr').querySelector('td:last-child'); 
-            statusCell.textContent = 'Approved';
-            approveCell.innerHTML = '<span>Accepted</span>';
+            const approveCell = approveButton.closest('tr').querySelector('td:last-child');
 
-            approveButton.remove();
-        } catch (error) {
-            console.error("Error approving content:", error);
-            alert("Failed to approve content.");
+            if (statusCell) {
+                statusCell.textContent = 'Approved';
+            }
+            if (approveCell) {
+                approveCell.innerHTML = '<span>Accepted</span>';
+            }
+
+            alert("Content approved.");
         }
-    }
 
-    document.addEventListener("DOMContentLoaded", loadPendingContent);
+        // Remove the approve button after action (if you want)
+        approveButton.remove();
+
+    } catch (error) {
+        console.error("Error approving content:", error);
+        alert("Failed to approve content.");
+    }
+}
+
+
+
+
+
+
+document.addEventListener("DOMContentLoaded", loadPendingContent);
 
     // Logout functionality
     document.getElementById('logoutButton').addEventListener('click', async (event) => {
