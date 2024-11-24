@@ -666,7 +666,7 @@ body {
 /* Optional: Set minimum widths for each column to prevent compression */
 .activity-table th:nth-child(1), 
 .activity-table td:nth-child(1) {
-    min-width: 300px; /* Minimum width for Activity column */
+    min-width: 200px; /* Minimum width for Activity column */
 }
 
 .activity-table th:nth-child(2), 
