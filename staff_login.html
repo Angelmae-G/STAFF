@@ -12,11 +12,10 @@
     <script type="module">
         // Firebase modules
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-        import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-        import { getFirestore, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+import { getFirestore, collection, query, where, getDocs, addDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
-        // Firebase configuration
-        const firebaseConfig = {
+const firebaseConfig = {
             apiKey: "AIzaSyA_VoT0W3zD6u5GVEa24dLcMkt3DJtnqYg",
             authDomain: "tagalog-cuyonon-mobile-app.firebaseapp.com",
             databaseURL: "https://tagalog-cuyonon-mobile-app-default-rtdb.firebaseio.com",
@@ -27,51 +26,58 @@
             measurementId: "G-9R8PRFSXQ1"
         };
 
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
 
-        // Initialize Firebase
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-        
-        // Handle form submission
-        // Handle form submission
-document.addEventListener('DOMContentLoaded', function() {
-    document.getElementById('loginForm').addEventListener('submit', async function (e) {
-        e.preventDefault(); // Prevent form from refreshing the page
+// Handle Login
+document.getElementById('loginForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
 
-        const email = document.getElementById('email').value;
-        const password = document.getElementById('password').value;
-
-        try {
-    // Sign in with email and password
-    const userCredential = await signInWithEmailAndPassword(auth, email, password);
-    const user = userCredential.user;
-
-    // Query the staff collection to check if the user exists
-    const staffRef = collection(db, 'staff');
-    const q = query(staffRef, where('email', '==', email));
-    const querySnapshot = await getDocs(q);
-
-    if (!querySnapshot.empty) {
+    try {
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
         alert('Login successful!');
-        window.location.href = "dashboard.html"; // Redirect to categories page
-    } else {
-        throw new Error('No staff found with that email.');
+        window.location.href = "dashboard.html";
+    } catch (error) {
+        document.getElementById('error-message').innerText = "Login failed: " + error.message;
     }
-} catch (error) {
-    const errorMessage = document.getElementById('error-message');
+});
 
-    // Handle Firebase specific error codes
-    if (error.code === 'auth/wrong-password') {
-        errorMessage.innerText = "Incorrect password.";
-    } else if (error.code === 'auth/user-not-found') {
-        errorMessage.innerText = "No staff found with that email.";
-    } else {
-        errorMessage.innerText = "Incorrect email/password.";
+// Handle Forgot Password
+document.getElementById('forgot-password-link').addEventListener('click', () => {
+    document.getElementById('forgot-password-modal').classList.remove('hidden');
+});
+
+document.getElementById('close-modal').addEventListener('click', () => {
+    document.getElementById('forgot-password-modal').classList.add('hidden');
+});
+
+document.getElementById('forgot-password-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('forgot-email').value;
+
+    try {
+        const staffQuery = query(collection(db, 'staff'), where('email', '==', email));
+        const querySnapshot = await getDocs(staffQuery);
+
+        if (!querySnapshot.empty) {
+            await addDoc(collection(db, 'activities'), {
+                action: "Forgot Password",
+                location: "Staff",
+                addedBy: email,
+                isApprove: false,
+                timestamp: new Date(),
+            });
+            alert("Password reset request submitted. Admin will review it.");
+            document.getElementById('forgot-password-modal').classList.add('hidden');
+        } else {
+            alert("Email not found in staff records.");
+        }
+    } catch (error) {
+        alert("Error processing request: " + error.message);
     }
-}
-
-    });
 });
 
     </script>
@@ -84,7 +90,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     <img id="logo" src="images/logo.png" alt="Logo" />
                 </div>
                 <h1>STAFF OF TAGA-CUYO LOGIN</h1>
-
                 <form class="flex-c" id="loginForm" method="POST">
                     <div class="input-box">
                         <label class="label" for="email">E-mail</label>
@@ -102,6 +107,10 @@ document.addEventListener('DOMContentLoaded', function() {
                         </div>
                     </div>
 
+                    <div class="input-box">
+                        <a id="forgot-password-link" href="#">Forgot Password?</a>
+                    </div>
+
                     <div class="check">
                         <input type="checkbox" id="terms" required>
                         <label for="terms">I've read and agree with <a href="terms_and_condition.html">T&C</a></label>
@@ -112,6 +121,17 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 <div id="error-message" style="color: red;"></div>
             </div>
+        </div>
+    </div>
+    <div id="forgot-password-modal" class="modal hidden">
+        <div class="modal-content">
+            <h2>Forgot Password</h2>
+            <form id="forgot-password-form">
+                <label for="forgot-email">Enter your email:</label>
+                <input type="email" id="forgot-email" placeholder="name@email.com" required>
+                <button type="submit" class="btn">Request Password Reset</button>
+            </form>
+            <button id="close-modal" class="btn">Close</button>
         </div>
     </div>
 </body>
