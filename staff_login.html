@@ -41,9 +41,11 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
         alert('Login successful!');
         window.location.href = "dashboard.html";
     } catch (error) {
-        document.getElementById('error-message').innerText = "Login failed: " + error.message;
+        // Always display a generic error message
+        document.getElementById('error-message').innerText = "Incorrect email/password.";
     }
 });
+
 
 // Handle Forgot Password
 document.getElementById('forgot-password-link').addEventListener('click', () => {
