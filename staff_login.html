@@ -52,6 +52,7 @@ document.getElementById('forgot-password-link').addEventListener('click', () => 
     document.getElementById('forgot-password-modal').classList.remove('hidden');
 });
 
+
 document.getElementById('close-modal').addEventListener('click', () => {
     document.getElementById('forgot-password-modal').classList.add('hidden');
 });
@@ -60,27 +61,29 @@ document.getElementById('forgot-password-form').addEventListener('submit', async
     e.preventDefault();
     const email = document.getElementById('forgot-email').value;
 
-    try {
-        const staffQuery = query(collection(db, 'staff'), where('email', '==', email));
-        const querySnapshot = await getDocs(staffQuery);
+    // Email validation check
+    if (!email) {
+        alert("Please enter a valid email.");
+        return;
+    }
 
-        if (!querySnapshot.empty) {
-            await addDoc(collection(db, 'activities'), {
-                action: "Forgot Password",
-                location: "Staff",
-                addedBy: email,
-                isApprove: false,
-                timestamp: new Date(),
-            });
-            alert("Password reset request submitted. Admin will review it.");
-            document.getElementById('forgot-password-modal').classList.add('hidden');
-        } else {
-            alert("Email not found in staff records.");
-        }
+    try {
+        // Add the password reset request to the activities collection, regardless of whether the email is found in staff records or not
+        await addDoc(collection(db, 'activities'), {
+            action: "Forgot Password",
+            location: "User",
+            addedBy: email,
+            isApprove: false,
+            timestamp: new Date(),
+        });
+
+        alert("Password reset request submitted. Admin will review it.");
+        document.getElementById('forgot-password-modal').classList.add('hidden');
     } catch (error) {
         alert("Error processing request: " + error.message);
     }
 });
+
 
     </script>
 </head>
