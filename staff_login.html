@@ -77,7 +77,7 @@ document.getElementById('forgot-password-form').addEventListener('submit', async
             timestamp: new Date(),
         });
 
-        alert("Password reset request submitted. Admin will review it.");
+        alert("New Password request submitted. Admin will review it.");
         document.getElementById('forgot-password-modal').classList.add('hidden');
     } catch (error) {
         alert("Error processing request: " + error.message);
@@ -113,7 +113,7 @@ document.getElementById('forgot-password-form').addEventListener('submit', async
                     </div>
 
                     <div class="input-box">
-                        <a id="forgot-password-link" href="#">Forgot Password?</a>
+                        <a id="forgot-password-link" href="#">Request New Password</a>
                     </div>
 
                     <div class="check">
