@@ -70,7 +70,7 @@ document.getElementById('forgot-password-form').addEventListener('submit', async
     try {
         // Add the password reset request to the activities collection, regardless of whether the email is found in staff records or not
         await addDoc(collection(db, 'activities'), {
-            action: "Request New Password",
+            action: "Request Password Reset",
             location: "User",
             addedBy: email,
             isApprove: false,
